@@ -52,5 +52,6 @@
 <style>
   .screen-container {
     display: flex;
+    position: relative;
   }
 </style>
