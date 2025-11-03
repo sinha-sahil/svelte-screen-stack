@@ -1,15 +1,19 @@
 <script lang="ts">
-  import state from './state';
+  import type { Snippet } from 'svelte';
+  import stackState from './state';
   import type { ScreenAnimation, State } from './types';
   import { get } from 'svelte/store';
 
-  export let initialScreen: string;
-  export let animation: ScreenAnimation = 'slide';
+  let {
+    initialScreen = '',
+    animation = 'slide',
+    children
+  }: { initialScreen: string; animation: ScreenAnimation; children?: Snippet } = $props();
 
-  let screenContainer: HTMLDivElement | null = null;
+  let screenContainer: HTMLDivElement | null = $state(null);
 
   export const changeScreen = function (newScreen: string, scrollToTop: boolean = true) {
-    state.update((x: State) => {
+    stackState.update((x: State) => {
       let slicedContent: string[] = [];
       let newStack = [];
 
@@ -31,7 +35,7 @@
   };
 
   export const goBack = function () {
-    const stack = get(state).stack;
+    const stack = get(stackState).stack;
     const penultimateScreen = stack.at(stack.length - 2);
     if (typeof penultimateScreen === 'string') {
       changeScreen(penultimateScreen);
@@ -39,7 +43,7 @@
   };
 
   function setupState() {
-    state.update((x: State) => {
+    stackState.update((x: State) => {
       return {
         ...x,
         activeScreen: initialScreen,
@@ -53,7 +57,9 @@
 </script>
 
 <div class="screen-container" bind:this={screenContainer}>
-  <slot></slot>
+  {#if children}
+    {@render children()}
+  {/if}
 </div>
 
 <style>

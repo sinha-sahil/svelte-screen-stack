@@ -1,37 +1,48 @@
 <script lang="ts">
-  import { tweened, type Tweened } from 'svelte/motion';
-  import state from './state';
+  import { Tween } from 'svelte/motion';
+  import stackState from './state';
   import { getEasingFunction, sleep } from './utils';
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import type { AnimationDirection, AnimationType, Easing, State, Transition } from './types';
 
-  export let name: string;
+  let { name = '', children }: { name: string; children?: Snippet } = $props();
 
-  let runExitAnimation = false;
-  let visibleScreen: string | null = null;
+  let runExitAnimation: boolean = $state(false);
+  let visibleScreen: string | null = $state(null);
 
-  let entryAnimationDuration: number = -1;
-  let exitAnimationDuration: number = -1;
+  let entryAnimationDuration: number = $state(-1);
+  let exitAnimationDuration: number = $state(-1);
 
-  let currentElement: HTMLElement | null = null;
+  let currentElement: HTMLElement | null = $state(null);
 
-  type TweenState = { fn: Tweened<number> } & Easing;
+  type TweenState = { fn: Tween<number> } & Easing;
 
-  let entryTweens: TweenState[] = [];
-  let exitTweens: TweenState[] = [];
+  let entryTweens: TweenState[] = $state([]);
+  let exitTweens: TweenState[] = $state([]);
+
+  function getTweenValue(property: Easing['property']) {
+    const tweens = runExitAnimation ? exitTweens : entryTweens;
+    const tween = tweens.find((t) => t.property === property);
+    return tween?.fn.current ?? (property === 'opacity' ? 1 : 0);
+  }
+
+  let transformX = $derived(getTweenValue('transformX'));
+  let transformY = $derived(getTweenValue('transformY'));
+  let opacity = $derived(getTweenValue('opacity'));
+  let scale = $derived(getTweenValue('scale'));
 
   function startEntryAnimation() {
     runExitAnimation = false;
 
     entryTweens.forEach((tweenSt) => {
-      tweenSt.fn.set(tweenSt.to);
+      tweenSt.fn.target = tweenSt.to;
     });
   }
 
   function endEntryAnimation(direction: AnimationDirection = 'forward') {
     entryTweens.forEach((tweenSt) => {
       const multiplier = tweenSt.property.includes('transform') && direction === 'forward' ? -1 : 1;
-      tweenSt.fn.set(multiplier * tweenSt.from);
+      tweenSt.fn.target = multiplier * tweenSt.from;
     });
   }
 
@@ -40,13 +51,13 @@
 
     exitTweens.forEach((tweenSt) => {
       const multiplier = tweenSt.property.includes('transform') && direction === 'forward' ? -1 : 1;
-      tweenSt.fn.set(multiplier * tweenSt.to);
+      tweenSt.fn.target = multiplier * tweenSt.to;
     });
   }
 
   function endExitAnimation() {
     exitTweens.forEach((tweenSt) => {
-      tweenSt.fn.set(tweenSt.from);
+      tweenSt.fn.target = tweenSt.from;
     });
   }
 
@@ -66,7 +77,7 @@
   }
 
   onMount(() => {
-    const animation = $state.animation;
+    const animation = $stackState.animation;
 
     let easingMethods: Transition | null = null;
 
@@ -78,43 +89,25 @@
 
     if (easingMethods !== null) {
       easingMethods.entry.forEach((animation) => {
-        const animTween = tweened(animation.from, {
+        const animTween = new Tween(animation.from, {
           duration: animation.duration,
           easing: animation.interpolator
         });
         entryAnimationDuration = Math.max(entryAnimationDuration, animation.duration);
         entryTweens.push({ ...animation, fn: animTween });
-
-        animTween.subscribe((x) => {
-          if (!runExitAnimation) {
-            currentElement?.style.setProperty(
-              `--${animation.property}`,
-              `${x}${animation.property.includes('transform') ? 'px' : ''}`
-            );
-          }
-        });
       });
 
       easingMethods.exit.forEach((animation) => {
-        const animTween = tweened(animation.from, {
+        const animTween = new Tween(animation.from, {
           duration: animation.duration,
           easing: animation.interpolator
         });
         exitAnimationDuration = Math.max(exitAnimationDuration, animation.duration);
         exitTweens.push({ ...animation, fn: animTween });
-
-        animTween.subscribe((x) => {
-          if (runExitAnimation) {
-            currentElement?.style.setProperty(
-              `--${animation.property}`,
-              `${x}${animation.property.includes('transform') ? 'px' : ''}`
-            );
-          }
-        });
       });
     }
 
-    state.subscribe(async (x: State) => {
+    stackState.subscribe(async (x: State) => {
       const isEntry = x.activeScreen == name;
       const stackIndex = x.stack.lastIndexOf(name);
       const slicedStackIndex = x.slicedContent.lastIndexOf(name);
@@ -146,17 +139,21 @@
 </script>
 
 {#if visibleScreen === name}
-  <div bind:this={currentElement} class="screen">
-    <slot></slot>
+  <div
+    bind:this={currentElement}
+    class="screen"
+    style:transform="translateX({transformX}px) translateY({transformY}px)"
+    style:opacity
+    style:scale
+  >
+    {#if children}
+      {@render children()}
+    {/if}
   </div>
 {/if}
 
 <style>
   .screen {
-    transform: translateX(var(--transformX, 0px)) translateY(var(--transformY, 0px));
-    opacity: var(--opacity, 1);
-    z-index: var(--zIndex, 1);
-    scale: var(--scale, 1);
     height: var(--screen-height);
     width: var(--screen-width, 100%);
     position: absolute;
