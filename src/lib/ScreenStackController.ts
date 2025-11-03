@@ -9,8 +9,8 @@ export class ScreenStackController {
     this.useViewTransition = useViewTransition;
   }
 
-  changeScreen(newScreenName: string) {
-    this.screenStackRef.changeScreen(newScreenName);
+  changeScreen(newScreenName: string, scrollToTop: boolean = true): void {
+    this.screenStackRef.changeScreen(newScreenName, scrollToTop);
   }
 
   goBack(): boolean {

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import state from './state';
   import type { ScreenAnimation, State } from './types';
   import { get } from 'svelte/store';
@@ -7,7 +6,9 @@
   export let initialScreen: string;
   export let animation: ScreenAnimation = 'slide';
 
-  export const changeScreen = function (newScreen: string) {
+  let screenContainer: HTMLDivElement | null = null;
+
+  export const changeScreen = function (newScreen: string, scrollToTop: boolean = true) {
     state.update((x: State) => {
       let slicedContent: string[] = [];
       let newStack = [];
@@ -21,6 +22,12 @@
 
       return { ...x, stack: newStack, activeScreen: newScreen, slicedContent };
     });
+
+    if (screenContainer instanceof HTMLElement && scrollToTop) {
+      screenContainer.scrollTo({
+        top: 0
+      });
+    }
   };
 
   export const goBack = function () {
@@ -45,12 +52,15 @@
   setupState();
 </script>
 
-<div class="screen-container">
+<div class="screen-container" bind:this={screenContainer}>
   <slot></slot>
 </div>
 
 <style>
   .screen-container {
     display: flex;
+    height: var(--screen-container-height);
+    width: var(--screen-container-width);
+    position: relative;
   }
 </style>

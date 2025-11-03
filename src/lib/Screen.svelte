@@ -157,6 +157,7 @@
     opacity: var(--opacity, 1);
     z-index: var(--zIndex, 1);
     scale: var(--scale, 1);
+    height: var(--screen-height);
     width: var(--screen-width, 100%);
     position: absolute;
     overflow-x: hidden;
