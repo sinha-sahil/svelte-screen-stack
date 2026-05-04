@@ -1,11 +1,15 @@
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 import type { State } from './types';
 
-const state = writable<State>({
-  activeScreen: null,
-  stack: [],
-  slicedContent: [],
-  animation: 'slide'
-});
+export type StackStore = Writable<State>;
 
-export default state;
+export const STACK_CONTEXT_KEY = Symbol('svelte-screen-stack');
+
+export function createStackStore(): StackStore {
+  return writable<State>({
+    activeScreen: null,
+    stack: [],
+    slicedContent: [],
+    animation: 'slide'
+  });
+}

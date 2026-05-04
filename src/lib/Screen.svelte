@@ -1,11 +1,13 @@
 <script lang="ts">
   import { Tween } from 'svelte/motion';
-  import stackState from './state';
+  import { STACK_CONTEXT_KEY, type StackStore } from './state';
   import { getEasingFunction, sleep } from './utils';
-  import { onMount, type Snippet } from 'svelte';
+  import { getContext, onMount, type Snippet } from 'svelte';
   import type { AnimationDirection, AnimationType, Easing, State, Transition } from './types';
 
   let { name = '', children }: { name: string; children?: Snippet } = $props();
+
+  const stackState = getContext<StackStore>(STACK_CONTEXT_KEY);
 
   let runExitAnimation: boolean = $state(false);
   let visibleScreen: string | null = $state(null);
@@ -115,7 +117,10 @@
       const isBack = slicedStackIndex !== -1 && slicedStackIndex === x.slicedContent.length - 1;
       const isRevisit = isEntry && x.slicedContent.length > 0;
 
-      if (isEntry) {
+      if (isRevisit) {
+        visibleScreen = x.activeScreen;
+        await startAnimation('entry', 'reverse');
+      } else if (isEntry) {
         visibleScreen = x.activeScreen;
         await startAnimation();
       } else if (isExit) {
@@ -124,13 +129,10 @@
       } else if (isBack) {
         await startAnimation('exit', 'reverse');
         visibleScreen = null;
-      } else if (isRevisit) {
-        visibleScreen = x.activeScreen;
-        await startAnimation('entry', 'reverse');
       }
 
       for (let i = 0; i < x.slicedContent.length - 1; i++) {
-        if (name === x.slicedContent.at(i)) {
+        if (name === x.slicedContent.at(i) && name !== x.activeScreen) {
           endEntryAnimation('reverse');
         }
       }
